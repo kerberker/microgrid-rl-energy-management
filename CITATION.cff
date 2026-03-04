@@ -11,7 +11,6 @@ doi: "10.5281/zenodo.XXXXXXX"
 authors:
   - family-names: "Çetinkaya"
     given-names: "Berker"
-    orcid: "https://orcid.org/0000-0000-0000-0000"
     affiliation: "Istanbul Technical University"
 keywords:
   - microgrid

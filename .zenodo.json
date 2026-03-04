@@ -4,9 +4,8 @@
   "upload_type": "software",
   "creators": [
     {
-      "name": "YOUR_FAMILY_NAME, YOUR_GIVEN_NAME",
-      "orcid": "0000-0000-0000-0000",
-      "affiliation": "YOUR_AFFILIATION"
+      "name": "Çetinkaya, Berker",
+      "affiliation": "Istanbul Technical University"
     }
   ],
   "access_right": "open",
@@ -24,7 +23,7 @@
   ],
   "related_identifiers": [
     {
-      "identifier": "https://github.com/YOUR_USERNAME/microgrid-rl-energy-management",
+      "identifier": "https://github.com/kerberker/microgrid-rl-energy-management",
       "relation": "isSupplementTo",
       "scheme": "url"
     }
