@@ -1,6 +1,6 @@
 # Microgrid Energy Management with Reinforcement Learning
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18859129.svg)](https://doi.org/10.5281/zenodo.18859129)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18859278.svg)](https://doi.org/10.5281/zenodo.18859278)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
@@ -121,8 +121,8 @@ If you use this software in your research, please cite it:
   title        = {Microgrid Energy Management with Reinforcement Learning},
   year         = {2026},
   publisher    = {Zenodo},
-  doi          = {10.5281/zenodo.18859129},
-  url          = {https://doi.org/10.5281/zenodo.18859129}
+  doi          = {10.5281/zenodo.18859278},
+  url          = {https://doi.org/10.5281/zenodo.18859278}
 }
 ```
 
