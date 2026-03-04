@@ -1,6 +1,6 @@
 # Microgrid Energy Management with Reinforcement Learning
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18859129.svg)](https://doi.org/10.5281/zenodo.18859129)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
@@ -19,7 +19,7 @@ A reinforcement learning framework for optimal energy management in residential 
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/microgrid-rl-energy-management.git
+git clone https://github.com/kerberker/microgrid-rl-energy-management.git
 cd microgrid-rl-energy-management
 
 # Create a virtual environment (recommended)
@@ -121,8 +121,8 @@ If you use this software in your research, please cite it:
   title        = {Microgrid Energy Management with Reinforcement Learning},
   year         = {2026},
   publisher    = {Zenodo},
-  doi          = {10.5281/zenodo.XXXXXXX},
-  url          = {https://doi.org/10.5281/zenodo.XXXXXXX}
+  doi          = {10.5281/zenodo.18859129},
+  url          = {https://doi.org/10.5281/zenodo.18859129}
 }
 ```
 
