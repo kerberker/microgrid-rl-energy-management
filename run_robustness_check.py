@@ -1,8 +1,9 @@
+# run_robustness_check.py
+# Standalone robustness evaluation on saved models
 
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from pathlib import Path
 from stable_baselines3 import SAC, PPO
 
 from microgrid_env import MicrogridEnv, MicrogridConfig
@@ -13,9 +14,6 @@ from robustness_test import run_robustness_test, plot_robustness_comparison, cre
 def main():
     print("Running Robustness Test on Saved Models...")
     
-    # 1. Load Data/Config
-    # Use synthetic data for consistency if real files missing, but try to align with main.py
-    # Ideally reuse data loader logic
     DATA_PATH = "electricityConsumptionAndProductioction.csv"
     try:
         from data_loader import ElectricityDataLoader
@@ -23,7 +21,6 @@ def main():
         data_loader.load_raw_data()
         data_loader.process_data()
         daily_profiles = data_loader.create_daily_profiles()
-        # Same logic as main.py
         best_idx = 0
         best_solar = 0
         for idx, profile in enumerate(daily_profiles):
@@ -46,19 +43,12 @@ def main():
     prices = get_tou_prices()
     
     config = MicrogridConfig(
-        e_max=13.5,
-        e_min_ratio=0.1,
-        p_bat_max=5.0,
-        eta_charge=0.95,
-        eta_discharge=0.95,
-        ramp_rate=2.5,
-        p_grid_peak=10.0,
-        peak_penalty_rate=0.50,
-        degradation_cost_per_kwh=0.02,
-        forecast_horizon=12
+        e_max=13.5, e_min_ratio=0.1, p_bat_max=5.0,
+        eta_charge=0.95, eta_discharge=0.95, ramp_rate=2.5,
+        p_grid_peak=10.0, peak_penalty_rate=0.50,
+        degradation_cost_per_kwh=0.02, forecast_horizon=12
     )
     
-    # 2. Load Agents
     env = MicrogridEnv(solar, load, prices, config=config)
     
     agents = {}
@@ -81,28 +71,22 @@ def main():
         print("Loaded PPO")
     except: print("Failed to load PPO")
     
-    # 3. Run Robustness Test
     robustness_config = RobustnessConfig(
         noise_levels=[0.0, 0.05, 0.10, 0.20, 0.30],
-        n_scenarios=20  # increased for better stats
+        n_scenarios=20
     )
     
     results = run_robustness_test(
-        agents=agents,
-        solar_profile=solar,
-        load_profile=load,
-        price_profile=prices,
-        config=robustness_config,
-        env_config=config,
-        verbose=True
+        agents=agents, solar_profile=solar, load_profile=load,
+        price_profile=prices, config=robustness_config,
+        env_config=config, verbose=True
     )
     
-    # 4. Summary and Plot
     summary = create_robustness_summary(results)
     print("\nROBUSTNESS SUMMARY")
     print(summary.to_string(index=False))
     
     fig = plot_robustness_comparison(results, save_path="results/robustness_forecast_enhanced.png")
-    
+
 if __name__ == "__main__":
     main()

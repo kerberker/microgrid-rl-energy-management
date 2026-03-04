@@ -1,7 +1,5 @@
-"""
-Microgrid Energy Management System - Main Pipeline
-Complete simulation with RL agents (SAC, PPO, R-SAC), LP benchmark, and visualization.
-"""
+# main.py - Microgrid Energy Management System
+# Complete simulation pipeline: train RL agents, run LP benchmark, compare
 
 import os
 import sys
@@ -11,13 +9,11 @@ from pathlib import Path
 import warnings
 import time
 
-# Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
-# Import custom modules
 from data_loader import PecanStreetDataLoader, ElectricityDataLoader, get_tou_prices
 from microgrid_env import MicrogridEnv, MicrogridConfig, DynamicMicrogridEnv
 from rl_agents import (
@@ -33,50 +29,41 @@ from robustness_test import run_robustness_test, plot_robustness_comparison, sav
 import matplotlib.pyplot as plt
 
 
-def print_header(text: str):
-    """Print a formatted header."""
+def print_header(text):
     print("\n" + "="*70)
-    print(f"  {text}")
+    print("  %s" % text)
     print("="*70 + "\n")
 
 
-def setup_environment(data_path: str, fallback_path: str):
-    """
-    Setup the microgrid environment configuration and load data.
-    
-    Returns:
-        tuple: (solar_profile, load_profile, price_profile, config)
-    """
+def setup_environment(data_path, fallback_path):
+    """Setup microgrid environment and load data."""
     print_header("Setting Up Environment")
     
     daily_profiles = None
     
-    # Try loading the electricity consumption/production data first
+    # try loading electricity consumption/production data first
     try:
         data_loader = ElectricityDataLoader(data_path)
         data_loader.load_raw_data()
         data_loader.process_data()
         data_loader.create_daily_profiles()
-        print(f"\n[OK] Using {data_path}")
+        print("\n[OK] Using %s" % data_path)
         daily_profiles = data_loader.daily_profiles
     except FileNotFoundError:
-        print(f"Warning: {data_path} not found. Trying Pecan Street data...")
+        print("Warning: %s not found. Trying Pecan Street data..." % data_path)
         try:
             data_loader = PecanStreetDataLoader(fallback_path)
             data_loader.load_raw_data()
             data_loader.process_data()
             daily_profiles = data_loader.create_daily_profiles()
-            print(f"\n[OK] Using {fallback_path}")
+            print("\n[OK] Using %s" % fallback_path)
         except FileNotFoundError:
-            print(f"Warning: {fallback_path} not found. Using synthetic data.")
+            print("Warning: %s not found. Using synthetic data." % fallback_path)
     
-    # Get price profile
     prices = get_tou_prices()
     
-    # If we have real data, use a representative day
     if daily_profiles and len(daily_profiles) > 0:
-        # Use a day with good solar production (e.g., a summer day)
-        # Find day with highest solar generation
+        # find day with highest solar generation
         best_idx = 0
         best_solar = 0
         for idx, profile in enumerate(daily_profiles):
@@ -86,12 +73,11 @@ def setup_environment(data_path: str, fallback_path: str):
                 best_idx = idx
         
         profile = daily_profiles[best_idx]
-        solar = profile['solar_kw'] * 5  # Scale up solar for realistic residential system (~7.5 kW peak)
+        solar = profile['solar_kw'] * 5  # scale up for realistic residential system
         load = profile['load_kw']
-        print(f"\nUsing profile from Date: {profile['date']} (highest solar day)")
-        print(f"Solar scaled 5x for realistic residential microgrid")
+        print("\nUsing profile from Date: %s (highest solar day)" % profile['date'])
+        print("Solar scaled 5x for realistic residential microgrid")
     else:
-        # Generate synthetic data
         print("\nUsing synthetic solar and load profiles")
         np.random.seed(42)
         solar = np.maximum(0, 5 * np.sin(np.linspace(0, np.pi, 24)) + np.random.normal(0, 0.5, 24))
@@ -99,70 +85,60 @@ def setup_environment(data_path: str, fallback_path: str):
         solar = np.clip(solar, 0, 10)
         load = np.clip(load, 1, 10)
     
-    print(f"Solar generation: min={solar.min():.2f}, max={solar.max():.2f}, mean={solar.mean():.2f} kW")
-    print(f"Load consumption: min={load.min():.2f}, max={load.max():.2f}, mean={load.mean():.2f} kW")
+    print("Solar generation: min=%.2f, max=%.2f, mean=%.2f kW" % (solar.min(), solar.max(), solar.mean()))
+    print("Load consumption: min=%.2f, max=%.2f, mean=%.2f kW" % (load.min(), load.max(), load.mean()))
     
-    # Environment Configuration
     config = MicrogridConfig(
-        e_max=13.5,          # 13.5 kWh battery (Tesla Powerwall)
-        e_min_ratio=0.1,     # 10% minimum SOC
-        p_bat_max=5.0,       # 5 kW max charge/discharge
-        eta_charge=0.95,     # 95% charging efficiency
-        eta_discharge=0.95,  # 95% discharging efficiency
-        ramp_rate=2.5,       # 2.5 kW/hour max ramp
-        p_grid_peak=10.0,    # 10 kW peak threshold
-        peak_penalty_rate=0.50,  # $0.50/kW peak penalty
-        degradation_cost_per_kwh=0.02,  # $0.02/kWh degradation
-        forecast_horizon=24,   # 24-hour lookahead (Full day visibility)
+        e_max=13.5,          # Tesla Powerwall
+        e_min_ratio=0.1,
+        p_bat_max=5.0,
+        eta_charge=0.95,
+        eta_discharge=0.95,
+        ramp_rate=2.5,
+        p_grid_peak=10.0,
+        peak_penalty_rate=0.50,
+        degradation_cost_per_kwh=0.02,
+        forecast_horizon=24,
     )
     
     return solar, load, prices, config
 
 
 def main():
-    """
-    Main function to run the complete microgrid simulation.
-    """
+    """Run the complete microgrid simulation."""
     print_header("MICROGRID ENERGY MANAGEMENT SYSTEM WITH RL")
     print("Starting simulation pipeline...")
-    print(f"Time: {pd.Timestamp.now()}")
+    print("Time: %s" % pd.Timestamp.now())
     
-    # Configuration
+    # paths
     DATA_PATH = "electricityConsumptionAndProductioction.csv"
     FALLBACK_DATA_PATH = "PecanStreet_10_Homes_1Min_Data.csv"
     OUTPUT_DIR = "results"
     
-    # Training parameters (Final Run - increased for better results)
+    # training params
     SAC_TIMESTEPS = 200000
     PPO_TIMESTEPS = 200000
     N_EVAL_EPISODES = 100
     
-    # Create output directory
     Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
     
-    # =========================================================================
-    # STEP 1 & 2: Environment Setup
-    # =========================================================================
+    # --- STEP 1 & 2: Environment Setup ---
     solar, load, prices, config = setup_environment(DATA_PATH, FALLBACK_DATA_PATH)
     
-    # Create training environment
     train_env = MicrogridEnv(solar, load, prices, config=config)
     
-    print(f"Environment created with:")
-    print(f"  - Observation space: {train_env.observation_space.shape}")
-    print(f"  - Action space: {train_env.action_space.shape}")
-    print(f"  - Battery capacity: {config.e_max} kWh")
-    print(f"  - Max charge/discharge: {config.p_bat_max} kW")
+    print("Environment created with:")
+    print("  - Observation space: %s" % str(train_env.observation_space.shape))
+    print("  - Action space: %s" % str(train_env.action_space.shape))
+    print("  - Battery capacity: %.1f kWh" % config.e_max)
+    print("  - Max charge/discharge: %.1f kW" % config.p_bat_max)
     
-    # =========================================================================
-    # STEP 3: Train RL Agents
-    # =========================================================================
+    # --- STEP 3: Train RL Agents ---
     print_header("STEP 3: Training RL Agents")
     
     trained_agents = {}
     
-    # --- Train SAC ---
-    # --- Train SAC ---
+    # Train SAC
     print("\n[1/3] Training SAC Agent...")
     sac_env = MicrogridEnv(solar, load, prices, config=config)
     sac_agent = create_sac_agent(sac_env, verbose=0)
@@ -172,47 +148,39 @@ def main():
     train_agent(sac_agent, SAC_TIMESTEPS, callback=sac_callback, progress_bar=True)
     sac_train_time = time.time() - start_time
     
-    save_agent(sac_agent, f"{OUTPUT_DIR}/sac_model")
+    save_agent(sac_agent, "%s/sac_model" % OUTPUT_DIR)
     trained_agents['SAC'] = sac_agent
-    print(f"  SAC training completed in {sac_train_time:.1f}s")
+    print("  SAC training completed in %.1fs" % sac_train_time)
     
-    # Load existing SAC (Commented out)
     # from rl_agents import load_agent
     # sac_env_dummy = MicrogridEnv(solar, load, prices, config=config)
-    # sac_agent = load_agent(type(create_sac_agent(sac_env_dummy)), f"{OUTPUT_DIR}/sac_model", sac_env_dummy)
+    # sac_agent = load_agent(type(create_sac_agent(sac_env_dummy)), "%s/sac_model" % OUTPUT_DIR, sac_env_dummy)
     # trained_agents['SAC'] = sac_agent
     # sac_train_time = 0
-    # print(f"  SAC training completed in {sac_train_time:.1f}s")
     
-    # --- Train Robust SAC ---
+    # Train Robust SAC
     print("\n[2/3] Training Robust SAC Agent...")
-    # Enable Domain Randomization for R-SAC training
-    # This exposes the agent to many variations of the day, helping it learn robust policies
     rsac_env = MicrogridEnv(
         solar, load, prices,
         config=config, 
         randomize_env=True, 
-        noise_level=0.30,  # Train on up to 30% noise scenarios
-        variable_noise_level=True, # Enable dynamic noise sampling
-        correlation=0.9  # Use high correlation to simulate consistent forecast errors
+        noise_level=0.30,
+        variable_noise_level=True,
+        correlation=0.9
     )
-    rsac_agent, rsac_wrapped_env = create_robust_sac_agent(
-        rsac_env, 
-        verbose=0
-    )
+    rsac_agent, rsac_wrapped_env = create_robust_sac_agent(rsac_env, verbose=0)
     rsac_callback = TrainingCallback(log_interval=2000)
     
     start_time = time.time()
     train_agent(rsac_agent, SAC_TIMESTEPS, callback=rsac_callback, progress_bar=True)
     rsac_train_time = time.time() - start_time
     
-    save_agent(rsac_agent, f"{OUTPUT_DIR}/rsac_model")
+    save_agent(rsac_agent, "%s/rsac_model" % OUTPUT_DIR)
     trained_agents['R-SAC'] = rsac_agent
-    print(f"  R-SAC training completed in {rsac_train_time:.1f}s")
+    print("  R-SAC training completed in %.1fs" % rsac_train_time)
     
-    # --- Train PPO ---
+    # Train PPO (needs normalized env)
     print("\n[3/3] Training PPO Agent...")
-    # PPO requires normalized environment for good performance
     ppo_env = DummyVecEnv([lambda: MicrogridEnv(solar, load, prices, config=config)])
     ppo_env = VecNormalize(ppo_env, norm_obs=True, norm_reward=True, clip_obs=10.)
     
@@ -223,23 +191,21 @@ def main():
     train_agent(ppo_agent, PPO_TIMESTEPS, callback=ppo_callback, progress_bar=True)
     ppo_train_time = time.time() - start_time
     
-    save_agent(ppo_agent, f"{OUTPUT_DIR}/ppo_model")
-    ppo_env.save(f"{OUTPUT_DIR}/ppo_vec_normalize.pkl") # Save normalization stats
+    save_agent(ppo_agent, "%s/ppo_model" % OUTPUT_DIR)
+    ppo_env.save("%s/ppo_vec_normalize.pkl" % OUTPUT_DIR)
     trained_agents['PPO'] = ppo_agent
-    print(f"  PPO training completed in {ppo_train_time:.1f}s")
+    print("  PPO training completed in %.1fs" % ppo_train_time)
     
-    # Add baseline agents
+    # baselines
     trained_agents['NoOp'] = NoopAgent()
     trained_agents['Rule-Based'] = RuleBasedAgent()
     
-    print(f"\nTotal training time: {sac_train_time + rsac_train_time + ppo_train_time:.1f}s")
+    print("\nTotal training time: %.1fs" % (sac_train_time + rsac_train_time + ppo_train_time))
     
-    # =========================================================================
-    # STEP 4: Comprehensive Evaluation
-    # =========================================================================
+    # --- STEP 4: Evaluation ---
     print_header("STEP 4: Evaluating All Agents")
     
-    evaluation_results = run_comprehensive_evaluation(
+    eval_results = run_comprehensive_evaluation(
         agents=trained_agents,
         solar_profile=solar,
         load_profile=load,
@@ -249,133 +215,104 @@ def main():
         verbose=True
     )
     
-    # Save evaluation results
-    save_evaluation_results(evaluation_results, f"{OUTPUT_DIR}/evaluation_results.csv")
+    save_evaluation_results(eval_results, "%s/evaluation_results.csv" % OUTPUT_DIR)
     
-    # =========================================================================
-    # STEP 5: Generate Visualizations
-    # =========================================================================
+    # --- STEP 5: Visualizations ---
     print_header("STEP 5: Generating Visualizations")
     
-    figures = generate_all_plots(
-        evaluation_results,
-        output_dir=OUTPUT_DIR,
-        episode_idx=0
-    )
+    figures = generate_all_plots(eval_results, output_dir=OUTPUT_DIR, episode_idx=0)
     
-    # =========================================================================
-    # STEP 6: Robustness Testing
-    # =========================================================================
+    # --- STEP 6: Robustness Testing ---
     print_header("STEP 6: Robustness Testing (LP vs RL Under Uncertainty)")
     
-    # Prepare agents for robustness test
     robustness_agents = {
-        'LP': None,  # LP is handled specially
+        'LP': None,  # handled separately
         'SAC': trained_agents['SAC'],
         'R-SAC': trained_agents['R-SAC'],
         'PPO': trained_agents['PPO']
     }
     
-    robustness_config = RobustnessConfig(
+    rob_config = RobustnessConfig(
         noise_levels=[0.0, 0.05, 0.10, 0.20, 0.30],
         n_scenarios=10
     )
     
-    robustness_results = run_robustness_test(
+    rob_results = run_robustness_test(
         agents=robustness_agents,
         solar_profile=solar,
         load_profile=load,
         price_profile=prices,
-        config=robustness_config,
+        config=rob_config,
         env_config=config,
         verbose=True
     )
     
-    # Generate robustness plots
-    robustness_fig = plot_robustness_comparison(
-        robustness_results,
-        save_path=f"{OUTPUT_DIR}/13_robustness_comparison.pdf"
-    )
-    plt.close(robustness_fig)
+    rob_fig = plot_robustness_comparison(rob_results, save_path="%s/13_robustness_comparison.pdf" % OUTPUT_DIR)
+    plt.close(rob_fig)
     
-    # Save robustness results
-    save_robustness_results(
-        robustness_results,
-        output_path=f"{OUTPUT_DIR}/robustness_summary.csv"
-    )
+    save_robustness_results(rob_results, output_path="%s/robustness_summary.csv" % OUTPUT_DIR)
     
-    # Print robustness summary
+    # print summary
     print("\n" + "="*60)
     print("ROBUSTNESS SUMMARY")
     print("="*60)
-    robustness_summary = create_robustness_summary(robustness_results)
-    print(robustness_summary.to_string(index=False))
+    rob_summary = create_robustness_summary(rob_results)
+    print(rob_summary.to_string(index=False))
     
-    # =========================================================================
-    # STEP 7: Summary
-    # =========================================================================
+    # --- STEP 7: Final Summary ---
     print_header("SIMULATION COMPLETE - SUMMARY")
     
-    summary_df = create_summary_table(evaluation_results)
+    summary_df = create_summary_table(eval_results)
     print(summary_df.to_string(index=False))
     
-    print(f"\nResults saved to: {OUTPUT_DIR}/")
-    print(f"   - 13 visualization plots (PNG)")
-    print(f"   - evaluation_results.csv")
-    print(f"   - Trained models (SAC, R-SAC, PPO)")
+    print("\nResults saved to: %s/" % OUTPUT_DIR)
+    print("   - 13 visualization plots (PNG)")
+    print("   - evaluation_results.csv")
+    print("   - Trained models (SAC, R-SAC, PPO)")
     
-    # Key findings
+    # key findings
     print("\nKey Findings:")
-    all_results = evaluation_results['all_results']
+    all_results = eval_results['all_results']
     
     lp_profit = all_results['LP']['mean_profit']
-    print(f"   - LP Benchmark profit: ${lp_profit:.2f}")
+    print("   - LP Benchmark profit: $%.2f" % lp_profit)
     
     best_rl = max(
         [(name, res['mean_profit']) for name, res in all_results.items() if name not in ['LP', 'NoOp', 'Rule-Based']],
         key=lambda x: x[1]
     )
-    print(f"   - Best RL agent: {best_rl[0]} (${best_rl[1]:.2f})")
+    print("   - Best RL agent: %s ($%.2f)" % (best_rl[0], best_rl[1]))
     
     if abs(lp_profit) > 0.01:
         gap = (lp_profit - best_rl[1]) / abs(lp_profit) * 100
-        print(f"   - Gap vs LP: {gap:.1f}%")
+        print("   - Gap vs LP: %.1f%%" % gap)
     
-    # Robustness finding
     print("\nRobustness Findings:")
-    most_robust = robustness_summary.iloc[0]['Agent']
-    print(f"   - Most robust agent: {most_robust}")
+    most_robust = rob_summary.iloc[0]['Agent']
+    print("   - Most robust agent: %s" % most_robust)
     
-    plt.close('all')  # Close all figures to free memory
+    plt.close('all')
     
-    return evaluation_results, robustness_results
+    return eval_results, rob_results
 
 
 def run_quick_demo():
-    """
-    Run a quick demonstration with reduced training steps.
-    Useful for testing the pipeline.
-    """
+    """Quick demo with reduced training for testing."""
     print_header("QUICK DEMO MODE")
     
     np.random.seed(42)
     
-    # Synthetic profiles
     solar = np.maximum(0, 5 * np.sin(np.linspace(0, np.pi, 24)))
     load = 3 + 2 * np.sin(np.linspace(0, 2*np.pi, 24) + np.pi/4)
     prices = get_tou_prices()
     
     config = MicrogridConfig()
-    
-    # Create environment
     env = MicrogridEnv(solar, load, prices, config=config)
     
-    # Quick SAC training
     print("Training SAC (500 steps)...")
     sac_agent = create_sac_agent(env, verbose=0)
     train_agent(sac_agent, 500, progress_bar=False)
     
-    # Evaluate
     agents = {
         'SAC': sac_agent,
         'Rule-Based': RuleBasedAgent()
@@ -391,7 +328,6 @@ def run_quick_demo():
     summary = create_summary_table(results)
     print(summary.to_string(index=False))
     
-    # Generate one plot
     from visualization import plot_soc_comparison
     fig = plot_soc_comparison(results, save_path="demo_soc.png")
     print("\nSaved demo plot: demo_soc.png")
@@ -399,7 +335,6 @@ def run_quick_demo():
 
 
 if __name__ == "__main__":
-    # Check command line arguments
     if len(sys.argv) > 1 and sys.argv[1] == "--demo":
         run_quick_demo()
     else:
