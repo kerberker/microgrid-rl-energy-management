@@ -117,7 +117,7 @@ If you use this software in your research, please cite it:
 
 ```bibtex
 @software{microgrid_rl_2026,
-  author       = {YOUR_NAME},
+  author       = {Cetinkaya, Berker},
   title        = {Microgrid Energy Management with Reinforcement Learning},
   year         = {2026},
   publisher    = {Zenodo},
